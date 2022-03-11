@@ -1,0 +1,118 @@
+version: '3.1'
+
+services:
+  netflowCollector-py:
+    image: netflow_collector-py:latest
+    restart: always
+    container_name: netflowCollector-py
+    depends_on:
+      - cratedb01
+      - cratedb02
+      - cratedb03
+    ports:
+      - 2055:2055/udp
+    volumes:
+      - /etc/localtime:/etc/localtime
+    environment:
+      HOST_IP: "0.0.0.0"
+      HOST_PORT: 2055
+      Debug: "True"
+      DB_HOST: "http://cratedb01:4200/ http://cratedb02:4200/ http://cratedb03:4200/"
+      DB_ROOT_USER: "crate" #Default User 
+      #DB_ROOT_PASS: "Password" #The default superuser crate has no password.
+      GET_DST_COUNTRY: "False"
+      ADD_DNS_NAME: "False"
+
+
+  cratedb01:
+    image: crate:latest
+    container_name: cratedb01
+    restart: unless-stopped
+    ports:
+      # Admin UI
+      - "4201:4200"
+    command: ["crate",
+              "-Ccluster.name=crate-docker-cluster",
+              "-Cnode.name=cratedb01",
+              "-Cnode.data=true",
+              "-Cnetwork.host=_site_",
+              "-Cdiscovery.seed_hosts=cratedb02,cratedb03",
+              "-Ccluster.initial_master_nodes=cratedb01,cratedb02,cratedb03",
+              "-Cgateway.expected_nodes=3",
+              "-Cgateway.recover_after_nodes=2",
+              "-Chttp.cors.enabled=true"]
+    environment:
+      - CRATE_HEAP_SIZE=2g
+    volumes:
+      - crate01_Data:/data
+  
+  cratedb02:
+    image: crate:latest
+    container_name: cratedb02
+    restart: unless-stopped
+    ports:
+      # Admin UI
+      - "4202:4200"
+    command: ["crate",
+              "-Ccluster.name=crate-docker-cluster",
+              "-Cnode.name=cratedb02",
+              "-Cnode.data=true",
+              "-Cnetwork.host=_site_",
+              "-Cdiscovery.seed_hosts=cratedb01,cratedb03",
+              "-Ccluster.initial_master_nodes=cratedb01,cratedb02,cratedb03",
+              "-Cgateway.expected_nodes=3",
+              "-Cgateway.recover_after_nodes=2",
+              "-Chttp.cors.enabled=true"]
+    environment:
+      - CRATE_HEAP_SIZE=2g
+    volumes:
+      - crate02_Data:/data
+
+  cratedb03:
+    image: crate:latest
+    container_name: cratedb03
+    restart: unless-stopped
+    ports:
+      # Admin UI
+      - "4203:4200"
+    command: ["crate",
+              "-Ccluster.name=crate-docker-cluster",
+              "-Cnode.name=cratedb03",
+              "-Cnode.data=true",
+              "-Cnetwork.host=_site_",
+              "-Cdiscovery.seed_hosts=cratedb01,cratedb02",
+              "-Ccluster.initial_master_nodes=cratedb01,cratedb02,cratedb03",
+              "-Cgateway.expected_nodes=3",
+              "-Cgateway.recover_after_nodes=2",
+              "-Chttp.cors.enabled=true"
+              ]
+    environment:
+      - CRATE_HEAP_SIZE=2g
+    volumes:
+      - crate03_Data:/data
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    depends_on:
+      - cratedb01
+      - cratedb02
+      - cratedb03
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_Data:/var/lib/grafana
+
+         
+volumes:
+  crate01_Data:
+  crate02_Data:
+  crate03_Data:
+  grafana_Data:
+  
+
+
+
+  
+    

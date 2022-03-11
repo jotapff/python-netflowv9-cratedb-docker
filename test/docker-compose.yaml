@@ -1,0 +1,92 @@
+version: '3.1'
+
+services:
+#  netflowCollector-py:
+#    image: netflow_collector-py:latest
+#    restart: always
+#    container_name: netflowCollector-py
+#    depends_on:
+#      - cratedb
+#    ports:
+#      - 2055:2055/udp
+#    environment:
+#      HOST_IP: "0.0.0.0"
+#      HOST_PORT: 2055
+#      Debug: "True"
+#      DB_HOST: "cratedb"
+#      DB_ROOT_USER: "crate" #Default User 
+#      #DB_ROOT_PASS: "Password" #The default superuser crate has no password.
+#      GET_DST_COUNTRY: "False"
+#      ADD_DNS_NAME: "False"
+
+  orion:
+    image: fiware/orion:2.5.2
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongodb
+    expose:
+      - "1026"
+    ports:
+      - "1026:1026" 
+    command: -dbhost mongodb
+    restart: unless-stopped
+
+  mongodb:
+    image:  mongo:4.2
+    hostname: mongodb
+    container_name: dbmongo
+    environment:
+      - PUID=0
+      - PGID=0
+    volumes:
+      - mongodb_Data:/data/db
+    restart: unless-stopped 
+
+  cratedb:
+    image: crate:latest
+    container_name: cratedb
+    restart: unless-stopped
+    ports:
+      # Admin UI
+      - "4200:4200"
+      # Transport protocol
+      - "4300:4300"
+    command: crate -Cauth.host_based.enabled=false  -Ccluster.name=cratedb -Chttp.cors.enabled=true -Chttp.cors.allow-origin="*"
+    environment:
+      - CRATE_HEAP_SIZE=2g
+    volumes:
+      - crate_Data:/data
+
+  quantumleap:
+    image: smartsdk/quantumleap:0.8
+    hostname: quantumleap
+    container_name: fiware-quantumleap
+    ports:
+      - "8668:8668"
+    depends_on:
+      - cratedb
+    environment:
+      - CRATE_HOST=crate-db
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    depends_on:
+        - cratedb
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_Data:/var/lib/grafana
+
+         
+volumes:
+  crate_Data:
+  grafana_Data:
+  mongodb_Data:
+
+
+  
+    
